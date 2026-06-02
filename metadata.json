@@ -1,0 +1,6 @@
+{
+  "name": "Nền tảng GitBot",
+  "description": "Nền tảng kiểm định mã nguồn và CI/CD GitBot tiện dụng tối ưu cho mọi loại kích thước màn hình",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
