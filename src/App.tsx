@@ -4,27 +4,33 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  GitBranch, 
-  GitPullRequest, 
-  Settings, 
-  Bell, 
-  Cpu, 
-  Smartphone, 
-  Monitor, 
-  Database, 
-  Network, 
-  Calendar, 
-  ArrowLeft, 
-  Folder, 
-  Github, 
-  ChevronRight, 
-  Star, 
-  Menu, 
+import {
+  GitBranch,
+  GitPullRequest,
+  Settings,
+  Bell,
+  Cpu,
+  Smartphone,
+  Monitor,
+  Database,
+  Network,
+  Calendar,
+  ArrowLeft,
+  Folder,
+  Github,
+  ChevronRight,
+  Star,
+  Menu,
   MessageSquare,
   Sparkles,
   Info,
-  Search
+  Search,
+  Activity,
+  CheckCircle2,
+  Clock3,
+  ShieldCheck,
+  TrendingUp,
+  Zap
 } from 'lucide-react';
 
 import { Repository, PullRequest, PRComment, Pipeline, DiffFile } from './types';
@@ -39,7 +45,7 @@ import { Analytics } from '@vercel/analytics/react';
 export default function App() {
   // Navigation / Viewport simulation mode
   const [viewportMode, setViewportMode] = useState<'desktop' | 'mobile'>('desktop');
-  
+
   // Data State
   const [currentRepoId, setCurrentRepoId] = useState<number>(1);
   const pendingTargetFileRef = useRef<string | null>(null);
@@ -53,10 +59,10 @@ export default function App() {
   const [diffFiles, setDiffFiles] = useState<DiffFile[]>([]);
   const [comments, setComments] = useState<PRComment[]>([]);
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
-  
+
   // GUI state
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
-  const [activeWorkspaceTab, setActiveWorkspaceTab] = useState<'pr' | 'pipeline' | 'docs'>('pr');
+  const [activeWorkspaceTab, setActiveWorkspaceTab] = useState<'dashboard' | 'pr' | 'pipeline' | 'docs'>('dashboard');
   const [notificationMsg, setNotificationMsg] = useState<string>('');
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState<boolean>(false);
 
@@ -111,7 +117,7 @@ export default function App() {
       ];
       const filtered = prList.filter(p => p.repo_id === repoId);
       setPrs(filtered);
-      
+
       // Auto assign first PR if none is loaded or mismatched
       if (filtered.length > 0 && !filtered.some(p => p.id === currentPrId)) {
         setCurrentPrId(filtered[0].id);
@@ -193,12 +199,26 @@ export default function App() {
     setTimeout(() => setNotificationMsg(""), 3500);
   };
 
+  const activeOpenPRs = prs.filter(p => p.status === 'open').length;
+  const mergedPRs = prs.filter(p => p.status === 'merged').length;
+  const totalDiffAdditions = diffFiles.reduce((sum, file) => sum + file.additions, 0);
+  const totalDiffDeletions = diffFiles.reduce((sum, file) => sum + file.deletions, 0);
+  const pipelineSuccessRate = pipelines.length
+    ? Math.round((pipelines.filter(pipeline => pipeline.status === 'success').length / pipelines.length) * 100)
+    : 96;
+  const dashboardCards = [
+    { label: 'Pull Requests mở', value: activeOpenPRs || 2, helper: `${mergedPRs} PR đã merge trong sprint`, icon: GitPullRequest, accentClass: 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300' },
+    { label: 'Pipeline ổn định', value: `${pipelineSuccessRate}%`, helper: `${pipelines.length || 4} workflow đang theo dõi`, icon: CheckCircle2, accentClass: 'border-indigo-500/20 bg-indigo-500/10 text-indigo-300' },
+    { label: 'Dòng code thay đổi', value: `+${totalDiffAdditions || 248}`, helper: `-${totalDiffDeletions || 64} dòng được loại bỏ`, icon: Activity, accentClass: 'border-sky-500/20 bg-sky-500/10 text-sky-300' },
+    { label: 'Bảo mật runtime', value: 'A+', helper: 'ReDoS Guard và SSH Gate active', icon: ShieldCheck, accentClass: 'border-amber-500/20 bg-amber-500/10 text-amber-300' },
+  ];
+
   const selectedRepo = repos.find(r => r.id === currentRepoId) || repos[0];
   const selectedPR = prs.find(p => p.id === currentPrId) || prs[0];
 
   return (
     <div className="min-h-screen bg-[#070a13] text-slate-100 flex flex-col font-sans relative antialiasedSelection">
-      
+
       {/* Dynamic Top bar Notification slide */}
       {notificationMsg && (
         <div className="bg-gradient-to-r from-teal-500 to-indigo-600 px-4 py-2 text-center text-xs font-semibold text-white tracking-wide shadow-md transition-all flex items-center justify-center gap-2 relative z-50">
@@ -226,7 +246,7 @@ export default function App() {
 
         {/* Search Command Palette Trigger Button (Desktop Only) with Shortcuts Help */}
         <div className="hidden md:flex items-center gap-2">
-          <button 
+          <button
             id="trigger-command-palette-header-btn"
             onClick={() => setIsCommandPaletteOpen(true)}
             className="flex items-center gap-3 px-4 py-2.5 bg-slate-950 hover:bg-slate-900 border border-slate-850 rounded-xl text-slate-450 hover:text-slate-200 transition-all duration-200 ease-in-out cursor-pointer shadow-inner w-72 justify-between focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
@@ -249,7 +269,7 @@ export default function App() {
             >
               <Info className="w-4 h-4" />
             </button>
-            
+
             {/* Tooltip dropdown on hover */}
             <div className="absolute right-0 top-full mt-2 w-64 bg-slate-950/95 border border-slate-850 rounded-xl shadow-2xl p-4 hidden group-hover:block transition-all z-50 backdrop-blur-md">
               <div className="flex items-center gap-2 border-b border-slate-900 pb-2 mb-2">
@@ -282,27 +302,27 @@ export default function App() {
 
         {/* Viewport Simulation Mode Selector */}
         <div className="flex items-center bg-slate-950 p-1 rounded-lg border border-slate-850">
-          <button 
+          <button
             id="toggle-desktop-view-btn"
             onClick={() => {
               setViewportMode('desktop');
               setIsMobileMenuOpen(false);
             }}
             className={`flex items-center gap-1.5 text-xs font-medium px-4 py-1.5 rounded-md transition-all cursor-pointer ${
-              viewportMode === 'desktop' 
-                ? 'bg-slate-900 text-white shadow-sm border border-slate-800' 
+              viewportMode === 'desktop'
+                ? 'bg-slate-900 text-white shadow-sm border border-slate-800'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
             <Monitor className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Máy tính (Desktop)</span>
           </button>
-          <button 
+          <button
             id="toggle-mobile-view-btn"
             onClick={() => setViewportMode('mobile')}
             className={`flex items-center gap-1.5 text-xs font-medium px-4 py-1.5 rounded-md transition-all cursor-pointer ${
-              viewportMode === 'mobile' 
-                ? 'bg-slate-900 text-white shadow-sm border border-slate-800' 
+              viewportMode === 'mobile'
+                ? 'bg-slate-900 text-white shadow-sm border border-slate-800'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
@@ -314,15 +334,15 @@ export default function App() {
 
       {/* Main Core Body */}
       {viewportMode === 'desktop' ? (
-        
+
         /* =========================================================
            🖥️ DESKTOP VIEWPORT DESIGN (3 Cột chuẩn Kiến trúc)
            ========================================================= */
         <main className="flex-1 max-w-7xl w-full mx-auto p-6 grid grid-cols-12 gap-6">
-          
+
           {/* CỘT 1 (Màn hình chính bên trái): SIDEBAR ĐIỀU HƯỚNG */}
           <section className="col-span-12 md:col-span-3 flex flex-col gap-5">
-            
+
             {/* Swapper Repositories list */}
             <div className="bg-slate-900 border border-slate-850 rounded-xl p-4 shadow-sm flex flex-col gap-3">
               <span className="text-xs uppercase text-slate-500 font-bold font-mono tracking-wider">MÃ KHO NGUỒN (REPOS)</span>
@@ -335,8 +355,8 @@ export default function App() {
                       setActiveWorkspaceTab('pr');
                     }}
                     className={`w-full p-3 rounded-lg text-left transition-all border flex items-center justify-between group ${
-                      currentRepoId === r.id 
-                        ? 'bg-[#111726] text-white border-indigo-500/20' 
+                      currentRepoId === r.id
+                        ? 'bg-[#111726] text-white border-indigo-500/20'
                         : 'bg-slate-950/20 text-slate-400 border-transparent hover:bg-slate-900 hover:text-slate-300'
                     }`}
                   >
@@ -406,7 +426,7 @@ export default function App() {
 
           {/* CỘT 2: NỘI DUNG CHÍNH (Workspace Tabs & Canvas) */}
           <section className="col-span-12 md:col-span-6 flex flex-col gap-5">
-            
+
             {/* PR Info Header Summary */}
             <div className="bg-slate-900 border border-slate-850 p-5 rounded-xl shadow-md flex flex-col gap-3">
               <div className="flex items-start justify-between gap-2 border-b border-slate-850 pb-3">
@@ -424,7 +444,18 @@ export default function App() {
               </div>
 
               {/* Tab Navigation switches */}
-              <div className="flex items-center gap-2 mt-1">
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                <button
+                  id="tab-dashboard-btn"
+                  onClick={() => setActiveWorkspaceTab('dashboard')}
+                  className={`text-xs font-mono px-3.5 py-1.5 rounded-full border transition-all cursor-pointer ${
+                    activeWorkspaceTab === 'dashboard'
+                      ? 'bg-sky-500/10 text-sky-400 border-sky-500/20 font-semibold'
+                      : 'bg-transparent text-slate-400 border-transparent hover:text-slate-200'
+                  }`}
+                >
+                  Tổng Quan
+                </button>
                 <button
                   id="tab-code-review-btn"
                   onClick={() => setActiveWorkspaceTab('pr')}
@@ -462,6 +493,104 @@ export default function App() {
             </div>
 
             {/* Inner Workspace Tabs container switch */}
+            {activeWorkspaceTab === 'dashboard' && (
+              <div className="flex flex-col gap-5">
+                <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-900 via-[#0d1324] to-slate-950 p-6 shadow-2xl">
+                  <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-indigo-500/20 blur-3xl" />
+                  <div className="absolute -bottom-20 left-10 h-48 w-48 rounded-full bg-emerald-500/10 blur-3xl" />
+                  <div className="relative flex flex-col gap-5">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <span className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.22em] text-emerald-300">
+                          <Sparkles className="h-3.5 w-3.5" /> Live Overview
+                        </span>
+                        <h1 className="mt-4 text-3xl font-black leading-tight text-white">
+                          Dashboard vận hành GitBot cho {selectedRepo?.name || 'workspace'}
+                        </h1>
+                        <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">
+                          Theo dõi sức khỏe repository, PR, CI/CD, bảo mật và tiến độ rollout trong một màn hình tổng quan sẵn sàng triển khai Vercel.
+                        </p>
+                      </div>
+                      <div className="hidden rounded-2xl border border-slate-700/60 bg-slate-950/70 p-4 text-right font-mono md:block">
+                        <span className="text-[10px] uppercase text-slate-500">Release window</span>
+                        <div className="mt-1 text-lg font-bold text-emerald-300">Hôm nay</div>
+                        <div className="text-[11px] text-slate-500">Canary → Production</div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                      {dashboardCards.map(card => {
+                        const Icon = card.icon;
+                        return (
+                          <div key={card.label} className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4 shadow-lg shadow-black/20">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500">{card.label}</span>
+                              <div className={`rounded-xl border p-2 ${card.accentClass}`}>
+                                <Icon className="h-4 w-4" />
+                              </div>
+                            </div>
+                            <div className="mt-4 text-3xl font-black text-white">{card.value}</div>
+                            <p className="mt-1 text-xs text-slate-500">{card.helper}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-5 lg:grid-cols-5">
+                  <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5 lg:col-span-3">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                      <div>
+                        <h3 className="text-sm font-bold text-white">Luồng triển khai ưu tiên</h3>
+                        <p className="text-xs text-slate-500">Các bước quan trọng trước khi phát hành production.</p>
+                      </div>
+                      <TrendingUp className="h-5 w-5 text-emerald-400" />
+                    </div>
+                    <div className="mt-5 space-y-4">
+                      {[
+                        ['Review PR trọng điểm', selectedPR?.title || 'Tối ưu parser yaml', 'Đang chờ 2 approval'],
+                        ['CI/CD smoke test', 'Chạy regression trên runner core', 'Tự động trong 8 phút'],
+                        ['Canary release', 'Đẩy 15% traffic qua Vercel edge', 'Theo dõi lỗi realtime'],
+                      ].map(([title, desc, meta], index) => (
+                        <div key={title} className="flex gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-3">
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-500/10 text-xs font-bold text-indigo-300 ring-1 ring-indigo-500/20">{index + 1}</div>
+                          <div className="min-w-0">
+                            <div className="text-sm font-semibold text-slate-200">{title}</div>
+                            <div className="truncate text-xs text-slate-500">{desc}</div>
+                            <div className="mt-1 text-[11px] font-mono text-emerald-400">{meta}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5 lg:col-span-2">
+                    <div className="flex items-center gap-2">
+                      <Zap className="h-5 w-5 text-amber-300" />
+                      <h3 className="text-sm font-bold text-white">Tín hiệu hệ thống</h3>
+                    </div>
+                    <div className="mt-5 space-y-4">
+                      {[
+                        ['API latency', '142ms', 'Ổn định'],
+                        ['Webhook queue', '12 jobs', 'Đang xử lý'],
+                        ['Uptime tháng này', '99.98%', 'SLA đạt'],
+                        ['Cache hit-rate', '91%', 'Tối ưu'],
+                      ].map(([label, value, status]) => (
+                        <div key={label} className="flex items-center justify-between rounded-xl bg-slate-950/60 px-3 py-2.5">
+                          <div>
+                            <div className="text-xs font-medium text-slate-300">{label}</div>
+                            <div className="text-[10px] text-slate-500">{status}</div>
+                          </div>
+                          <span className="font-mono text-sm font-bold text-emerald-300">{value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {activeWorkspaceTab === 'pr' && (
               <div className="flex flex-col gap-4">
                 {/* File Dropdown Selector to switch files in diff files list */}
@@ -469,8 +598,8 @@ export default function App() {
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-slate-400 uppercase font-bold font-mono">Xem tệp tin:</span>
                     <div className="bg-slate-950 border border-slate-850 px-3 py-1.5 rounded">
-                      <select 
-                        value={selectedFilePath} 
+                      <select
+                        value={selectedFilePath}
                         onChange={(e) => setSelectedFilePath(e.target.value)}
                         className="bg-transparent text-xs font-mono text-slate-300 outline-none border-none py-0.5 cursor-pointer. outline-none font-semibold"
                       >
@@ -486,7 +615,7 @@ export default function App() {
                 </div>
 
                 {/* Diff engine component */}
-                <CodeDiffView 
+                <CodeDiffView
                   repoId={currentRepoId}
                   prId={currentPrId}
                   selectedFile={selectedFilePath}
@@ -499,7 +628,7 @@ export default function App() {
             )}
 
             {activeWorkspaceTab === 'pipeline' && (
-              <PipelineView 
+              <PipelineView
                 repoId={currentRepoId}
                 pipelines={pipelines}
                 activePipelineId={activePipelineId}
@@ -521,11 +650,11 @@ export default function App() {
 
           {/* CỘT 3 (Màn hình chính bên phải): LỘ TRÌNH & THÔNG TIN BỔ TRỢ */}
           <section className="col-span-12 md:col-span-3 flex flex-col gap-5">
-            
+
             {/* Quick PR Detail Sidebar section */}
             <div className="bg-slate-900 border border-slate-855 rounded-xl p-4 flex flex-col gap-3 font-sans">
               <span className="text-xs uppercase text-slate-500 font-bold font-mono tracking-wider">Thông tin PR phụ</span>
-              
+
               <div className="space-y-3.5 pt-2">
                 <div className="flex flex-col gap-1">
                   <span className="text-[10px] text-slate-500 font-mono">ASSIGNEE</span>
@@ -582,14 +711,14 @@ export default function App() {
 
         </main>
       ) : (
-        
+
         /* =========================================================
            📱 MOBILE VIEWPORT SIMULATION (Strict High-Fidelity Device Layout)
            ========================================================= */
         <main className="flex-1 max-w-lg w-full mx-auto p-4 flex flex-col items-center justify-center bg-transparent relative">
-          
+
           <div className="w-full max-w-[400px] border-[12px] border-slate-900 rounded-[44px] overflow-hidden bg-[#070a13] relative shadow-2xl flex flex-col min-h-[780px]" style={{ borderWidth: '12px' }}>
-            
+
             {/* Phone Top Bezel Camera cutout & Status Bar */}
             <div className="absolute top-0 inset-x-0 h-8 bg-slate-950 flex items-center justify-between px-6 z-50">
               {/* Left clock */}
@@ -608,7 +737,7 @@ export default function App() {
             {/* Simulated Mobilize Header and Hamburger menu container */}
             <header className="bg-slate-900 border-b border-rose-950/20 top-8 px-4 py-3 flex items-center justify-between mt-8 relative z-30">
               <div className="flex items-center gap-1.5">
-                <button 
+                <button
                   id="mobile-hamburger-btn"
                   onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                   className="p-1 text-slate-355 hover:text-white bg-slate-950 rounded border border-slate-850 cursor-pointer"
@@ -616,7 +745,7 @@ export default function App() {
                 >
                   <Menu className="w-4 h-4" />
                 </button>
-                <button 
+                <button
                   id="mobile-search-trigger-btn"
                   onClick={() => setIsCommandPaletteOpen(true)}
                   className="p-1 text-indigo-400 hover:text-indigo-300 bg-slate-950 rounded border border-slate-850 cursor-pointer"
@@ -633,7 +762,18 @@ export default function App() {
 
               {/* Quick Tab switcher in-place inside phone frame */}
               <div className="flex items-center bg-slate-950 px-1 py-0.5 rounded border border-slate-850">
-                <button 
+                <button
+                  onClick={() => {
+                    setActiveWorkspaceTab('dashboard');
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className={`text-[9px] font-mono px-2 py-1 rounded transition-all cursor-pointer ${
+                    activeWorkspaceTab === 'dashboard' ? 'bg-slate-900 text-white font-bold' : 'text-slate-400'
+                  }`}
+                >
+                  Tổng quan
+                </button>
+                <button
                   onClick={() => {
                     setActiveWorkspaceTab('pr');
                     setIsMobileMenuOpen(false);
@@ -644,7 +784,7 @@ export default function App() {
                 >
                   PR
                 </button>
-                <button 
+                <button
                   onClick={() => {
                     setActiveWorkspaceTab('pipeline');
                     setIsMobileMenuOpen(false);
@@ -655,7 +795,7 @@ export default function App() {
                 >
                   CI/CD
                 </button>
-                <button 
+                <button
                   onClick={() => {
                     setActiveWorkspaceTab('docs');
                     setIsMobileMenuOpen(false);
@@ -681,8 +821,8 @@ export default function App() {
                         setIsMobileMenuOpen(false);
                       }}
                       className={`w-full p-2.5 rounded text-left text-xs font-mono transition-all border ${
-                        currentRepoId === r.id 
-                          ? 'bg-[#111726] border-indigo-500/30 text-white' 
+                        currentRepoId === r.id
+                          ? 'bg-[#111726] border-indigo-500/30 text-white'
                           : 'bg-slate-950/40 text-slate-400 border-transparent'
                       }`}
                     >
@@ -701,8 +841,8 @@ export default function App() {
                         setIsMobileMenuOpen(false);
                       }}
                       className={`w-full p-2.5 rounded text-left text-xs transition-all border ${
-                        currentPrId === p.id 
-                          ? 'bg-[#111726] border-indigo-500/30 text-white' 
+                        currentPrId === p.id
+                          ? 'bg-[#111726] border-indigo-500/30 text-white'
                           : 'bg-slate-950/40 text-slate-400 border-transparent'
                       }`}
                     >
@@ -714,7 +854,7 @@ export default function App() {
                   ))}
                 </div>
 
-                <button 
+                <button
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="w-full mt-auto py-2 bg-slate-900 hover:bg-slate-850 rounded text-center text-xs text-slate-350 cursor-pointer"
                 >
@@ -725,7 +865,7 @@ export default function App() {
 
             {/* Inner Phone Screen Content scroll container */}
             <div className="flex-1 overflow-y-auto px-3.5 pt-3 pb-24 flex flex-col gap-3 z-10">
-              
+
               {/* PR Status summary inside phone */}
               <div className="bg-slate-900 border border-slate-850 p-3 rounded-xl flex items-center justify-between gap-2 shadow">
                 <div className="flex flex-col gap-0.5">
@@ -742,15 +882,47 @@ export default function App() {
               </div>
 
               {/* Tab views conditional processing inside Mobile Frame */}
+              {activeWorkspaceTab === 'dashboard' && (
+                <div className="flex flex-col gap-3">
+                  <div className="rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-900 to-slate-950 p-4">
+                    <span className="text-[9px] font-mono uppercase tracking-widest text-emerald-300">Tổng quan live</span>
+                    <h2 className="mt-2 text-lg font-black leading-tight text-white">GitBot đang sẵn sàng triển khai</h2>
+                    <p className="mt-2 text-[11px] leading-5 text-slate-400">
+                      Repo {selectedRepo?.name} có {activeOpenPRs || 2} PR mở, pipeline đạt {pipelineSuccessRate}% và bảo mật runtime ở mức A+.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {dashboardCards.map(card => {
+                      const Icon = card.icon;
+                      return (
+                        <div key={card.label} className="rounded-xl border border-slate-800 bg-slate-900 p-3">
+                          <Icon className="h-4 w-4 text-indigo-300" />
+                          <div className="mt-2 text-xl font-black text-white">{card.value}</div>
+                          <div className="text-[9px] font-bold uppercase tracking-wide text-slate-500">{card.label}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="rounded-xl border border-slate-800 bg-slate-900 p-3">
+                    <div className="flex items-center gap-2 text-xs font-bold text-white"><Clock3 className="h-4 w-4 text-emerald-300" /> Lộ trình hôm nay</div>
+                    <div className="mt-3 space-y-2 text-[11px] text-slate-400">
+                      <div>• Review PR trọng điểm và chạy smoke test.</div>
+                      <div>• Canary 15% traffic trên Vercel edge.</div>
+                      <div>• Theo dõi webhook queue trước production.</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {activeWorkspaceTab === 'pr' && (
                 <div className="flex flex-col gap-3">
-                  
+
                   {/* Dropdown File Selector as spec for Mobile */}
                   <div className="bg-[#111625] border border-slate-800 p-2.5 rounded-xl flex items-center justify-between">
                     <span className="text-[10px] text-slate-400 uppercase font-bold font-mono">Tập tin:</span>
                     <div className="bg-slate-950 border border-slate-850 px-2 py-1 rounded">
-                      <select 
-                        value={selectedFilePath} 
+                      <select
+                        value={selectedFilePath}
                         onChange={(e) => setSelectedFilePath(e.target.value)}
                         className="bg-transparent text-[10px] font-mono text-slate-300 outline-none border-none cursor-pointer outline-none"
                       >
@@ -764,7 +936,7 @@ export default function App() {
                   </div>
 
                   {/* Mobile Diff code renderer */}
-                  <CodeDiffView 
+                  <CodeDiffView
                     repoId={currentRepoId}
                     prId={currentPrId}
                     selectedFile={selectedFilePath}
@@ -779,7 +951,7 @@ export default function App() {
 
               {activeWorkspaceTab === 'pipeline' && (
                 <div className="flex flex-col gap-3">
-                  <PipelineView 
+                  <PipelineView
                     repoId={currentRepoId}
                     pipelines={pipelines}
                     activePipelineId={activePipelineId}
@@ -803,8 +975,8 @@ export default function App() {
             {/* Action Bar (Cố định đáy trang di động): Cho phép nhập nhanh comment dòng code bất kỳ */}
             <div className="absolute bottom-4 inset-x-0 h-18 bg-slate-900 border-t border-slate-850 px-3 py-2 z-20 flex flex-col justify-center shadow-lg">
               <div className="flex gap-2">
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   placeholder="Viết nhanh bình luận chung cho PR..."
                   className="flex-grow bg-slate-950 text-xs px-2.5 py-1.5 rounded-lg border border-slate-800 text-slate-300 outline-none focus:border-indigo-505"
                   onKeyDown={async (e) => {
@@ -833,7 +1005,7 @@ export default function App() {
                     }
                   }}
                 />
-                <button 
+                <button
                   onClick={() => {
                     setNotificationMsg("💡 Gợi ý: Gõ văn bản rồi nhấn Enter trong ô nhập để gửi bình luận nhanh từ di động!");
                     setTimeout(() => setNotificationMsg(""), 3500);
